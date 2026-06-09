@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "development-secret-key"
     DEBUG: bool = True
     
+    # CORS
+    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    
+    # Storage
+    DATA_DIR: str = "data"
+    
     # AI Keys
     OPENROUTER_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
