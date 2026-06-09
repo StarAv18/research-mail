@@ -12,5 +12,5 @@ async def scrape_professor(
     scraper: UniversityProfileScraper = Depends(get_scraper_service)
 ) -> APIResponse[Professor]:
     """Scrape a professor profile from a university URL."""
-    professor = scraper.scrape(url)
+    professor = await scraper.scrape(url)
     return APIResponse(success=True, data=professor, message="Professor profile extracted successfully")

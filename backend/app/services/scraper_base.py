@@ -9,7 +9,7 @@ class BaseScraper(ABC):
     """
     
     @abstractmethod
-    def scrape(self, url: str) -> Professor:
+    async def scrape(self, url: str) -> Professor:
         """
         Scrape the given URL and return a Professor object.
         """

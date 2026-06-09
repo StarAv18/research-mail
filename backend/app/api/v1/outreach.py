@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any
+from uuid import UUID
 from app.models.response import APIResponse
 from app.models.professor import Professor
 from app.models.student_profile import StudentProfile
@@ -51,12 +52,11 @@ async def generate_outreach_email(
 
 @router.post("/bulk-send", response_model=APIResponse[Dict[str, Any]])
 async def bulk_send_emails(
-    local_draft_ids: List[str], # IDs of local drafts to send
+    local_draft_ids: List[UUID], # IDs of local drafts to send
     bulk_service: BulkEmailService = Depends(get_bulk_email_service)
 ) -> APIResponse[Dict[str, Any]]:
     """Trigger bulk send for multiple drafts."""
-    # This is a simplified version of the bulk workflow
-    # In reality, it would first create provider drafts then send
+    # In a real workflow, we'd ensure provider drafts exist first
     results = await bulk_service.bulk_send(
         provider_draft_ids=["mock_" + str(i) for i in local_draft_ids],
         local_draft_ids=local_draft_ids

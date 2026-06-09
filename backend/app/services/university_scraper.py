@@ -1,5 +1,5 @@
 import re
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from typing import Optional
 from app.models.professor import Professor
@@ -15,24 +15,24 @@ class UniversityProfileScraper(BaseHTMLScraper):
     Refactored for better extraction strategies and robustness.
     """
 
-    def __init__(self, timeout: int = 10, session: Optional[requests.Session] = None):
+    def __init__(self, timeout: int = 10):
         self.timeout = timeout
-        self.session = session or requests.Session()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
 
-    def scrape(self, url: str) -> Professor:
+    async def scrape(self, url: str) -> Professor:
         """
         Scrape a university profile page with enhanced error handling.
         """
         try:
-            response = self.session.get(url, headers=self.headers, timeout=self.timeout)
-            response.raise_for_status()
-        except requests.Timeout:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+        except httpx.TimeoutException:
             logger.error(f"Timeout reaching URL {url}")
             raise StarletteHTTPException(status_code=408, detail=f"Request to {url} timed out.")
-        except requests.RequestException as e:
+        except httpx.RequestError as e:
             logger.error(f"Failed to fetch URL {url}: {str(e)}")
             raise StarletteHTTPException(status_code=400, detail=f"Could not reach the university profile: {str(e)}")
 
