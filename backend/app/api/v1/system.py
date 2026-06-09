@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from app.models.response import APIResponse
+from app.models.professor import Professor
+from app.services.university_scraper import UniversityProfileScraper
 from app.core.logging import get_logger
 from app.core.config import Settings, get_settings
 import os
@@ -13,15 +15,9 @@ async def health_check(
 ) -> APIResponse[dict[str, str]]:
     """
     Enhanced health check to verify service and storage status.
-    
-    Returns:
-        An APIResponse containing service status and dependency health.
     """
     logger.debug("Health check requested")
-    
-    # Check if data directory exists/is writable
     data_dir_ok = os.path.exists(settings.DATA_DIR)
-    
     return APIResponse(
         success=True,
         data={

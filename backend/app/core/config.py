@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     
+    # AI Default Models
+    DEFAULT_AI_PROVIDER: str = "ollama"
+    OLLAMA_MODEL: str = "llama3"
+    OPENROUTER_MODEL: str = "google/gemini-pro-1.5"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    AI_TIMEOUT: float = 60.0
+    
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 @lru_cache

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://research-internship-agent.vercel.app/sitemap.xml

@@ -20,13 +20,24 @@ The Research Internship Agent is designed using Clean Architecture principles to
 Follows a modular structure where business logic is separated from the API layer.
 
 - **`api/`**: Contains API route handlers (Controllers). Versioned (e.g., `v1/`).
+    - **`v1/discovery.py`**: Professor profile extraction.
+    - **`v1/drafts.py`**: CRUD for email outreach drafts.
+    - **`v1/outreach.py`**: AI email generation and bulk sending.
 - **`core/`**: Centralized configuration (`config.py`), security, and error handling. Uses `pydantic-settings` for environment management.
 - **`models/`**: Pydantic schemas for data validation and standardized API responses (`response.py`).
 - **`services/`**: Business logic layer.
+    - **`university_scraper.py`**: Robust scraper for professor profiles using requests/BS4.
     - **`ai/`**: Implementation of the Provider Pattern for AI models.
         - `base.py`: Abstract base class for AI providers.
         - `ollama.py`, `openrouter.py`, `gemini.py`: Specific provider implementations.
+    - **`summarization.py`**: Refactored service with improved parsing and template usage.
+    - **`email_generation.py`**: AI-driven personalized email generation.
+    - **`outreach_service.py`**: Business logic for tracking communications.
+    - **`bulk_email_service.py`**: Orchestration for mass outreach and provider integration.
+    - **`safety_service.py`**: Guardrails for daily limits and duplicate prevention.
 - **`repository/`**: Data access layer. Handles storage abstraction.
+    - **`draft_repository.py`**: JSON-based storage for email drafts.
+    - **`outreach_repository.py`**: JSON-based storage for communication history.
 - **`data/`**: Directory where JSON data files are stored.
 - **`tests/`**: Unit and integration tests using Pytest.
 
