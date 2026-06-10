@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from "react"
+import Link from "next/link"
 import { TrendingUp } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,9 +18,11 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground/90">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Welcome back, here&apos;s an overview of your outreach progress.</p>
         </div>
-        <Button variant="accent" className="gap-2 w-full sm:w-auto">
-          <TrendingUp className="h-4 w-4" />
-          Analyze New Field
+        <Button variant="accent" className="w-full gap-2 sm:w-auto" asChild>
+          <Link href="/discover">
+            <TrendingUp className="h-4 w-4" />
+            Analyze New Field
+          </Link>
         </Button>
       </div>
 

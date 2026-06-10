@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from typing import List, Dict, Any
 from uuid import UUID
 from app.models.response import APIResponse
@@ -19,33 +20,30 @@ from app.services.bulk_email_service import BulkEmailService
 
 router = APIRouter()
 
-class GenerationRequest(APIResponse):
+class GenerationRequest(BaseModel):
     professor: Professor
     student: StudentProfile
-    # In a real app, research_summary might be fetched or passed
     research_summary: ResearchSummary
+    email_style: str = "Standard Professional"
 
 @router.post("/generate", response_model=APIResponse[GeneratedEmail])
 async def generate_outreach_email(
-    professor: Professor,
-    student: StudentProfile,
-    research_summary: ResearchSummary,
-    email_style: str = "Standard Professional",
+    request: GenerationRequest,
     gen_service: EmailGenerationService = Depends(get_email_gen_service),
     safety_service: SafetyService = Depends(get_safety_service)
 ) -> APIResponse[GeneratedEmail]:
     """Generate a personalized outreach email after safety checks."""
     
     # Safety Check
-    is_safe, reason = await safety_service.is_safe_to_send(professor.email)
+    is_safe, reason = await safety_service.is_safe_to_send(request.professor.email)
     if not is_safe:
         raise HTTPException(status_code=400, detail=reason)
         
     email = await gen_service.generate_email(
-        professor=professor,
-        research_summary=research_summary,
-        student=student,
-        email_style=email_style
+        professor=request.professor,
+        research_summary=request.research_summary,
+        student=request.student,
+        email_style=request.email_style
     )
     
     return APIResponse(success=True, data=email)

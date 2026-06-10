@@ -54,7 +54,7 @@ export default function DiscoveryPage() {
               <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input 
                 placeholder="https://profiles.stanford.edu/name..." 
-                className="pl-10 h-12 bg-background/50 border-white/10 focus:border-primary/50"
+                className="pl-10 h-12 bg-white text-slate-950 placeholder:text-slate-400 border-white/10 focus:border-primary/50"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 disabled={loading}

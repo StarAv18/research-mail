@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import Depends
+from fastapi import Depends, Header
 from app.core.config import Settings, get_settings
 from app.models.enums import AIProvider
 from app.services.ai.base import BaseAIProvider
@@ -10,7 +10,9 @@ from app.services.ai.exceptions import AIConfigurationError
 
 def get_ai_provider(
     provider_type: Optional[AIProvider] = None,
-    settings: Settings = Depends(get_settings)
+    settings: Settings = Depends(get_settings),
+    x_ai_provider: Optional[str] = Header(default=None),
+    x_ai_api_key: Optional[str] = Header(default=None),
 ) -> BaseAIProvider:
     """
     Dependency injection factory for AI providers.
@@ -23,22 +25,28 @@ def get_ai_provider(
         An instance of a concrete BaseAIProvider.
     """
     # Use default from settings if not provided
-    active_provider = provider_type or AIProvider(settings.DEFAULT_AI_PROVIDER)
+    requested_provider = provider_type or x_ai_provider or settings.DEFAULT_AI_PROVIDER
+    try:
+        active_provider = AIProvider(requested_provider)
+    except ValueError as exc:
+        raise AIConfigurationError(f"Unsupported AI provider: {requested_provider}") from exc
     
     if active_provider == AIProvider.OPENROUTER:
-        if not settings.OPENROUTER_API_KEY:
+        api_key = x_ai_api_key or settings.OPENROUTER_API_KEY
+        if not api_key:
             raise AIConfigurationError("OPENROUTER_API_KEY is not set")
         return OpenRouterProvider(
-            api_key=settings.OPENROUTER_API_KEY,
+            api_key=api_key,
             model=settings.OPENROUTER_MODEL,
             timeout=settings.AI_TIMEOUT
         )
         
     elif active_provider == AIProvider.GEMINI:
-        if not settings.GEMINI_API_KEY:
+        api_key = x_ai_api_key or settings.GEMINI_API_KEY
+        if not api_key:
             raise AIConfigurationError("GEMINI_API_KEY is not set")
         return GeminiProvider(
-            api_key=settings.GEMINI_API_KEY,
+            api_key=api_key,
             model=settings.GEMINI_MODEL,
             timeout=settings.AI_TIMEOUT
         )

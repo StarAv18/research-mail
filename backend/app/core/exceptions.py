@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.models.response import ErrorResponse
 from app.core.logging import get_logger
+from app.services.ai.exceptions import AIConfigurationError, AIGenerationError
 
 logger = get_logger(__name__)
 
@@ -38,6 +39,32 @@ def setup_exception_handlers(app: FastAPI) -> None:
                 success=False,
                 error=str(exc.errors()),
                 message="Data validation failed"
+            ).model_dump()
+        )
+
+    @app.exception_handler(AIConfigurationError)
+    async def ai_configuration_handler(request: Request, exc: AIConfigurationError) -> JSONResponse:
+        """Return useful errors when the user has not configured an AI key."""
+        logger.error(f"AI configuration error: {str(exc)} at {request.url}")
+        return JSONResponse(
+            status_code=400,
+            content=ErrorResponse(
+                success=False,
+                error=str(exc),
+                message="AI provider is not configured"
+            ).model_dump()
+        )
+
+    @app.exception_handler(AIGenerationError)
+    async def ai_generation_handler(request: Request, exc: AIGenerationError) -> JSONResponse:
+        """Return useful errors for AI provider failures."""
+        logger.error(f"AI generation error: {str(exc)} at {request.url}")
+        return JSONResponse(
+            status_code=502,
+            content=ErrorResponse(
+                success=False,
+                error=str(exc),
+                message="AI provider request failed"
             ).model_dump()
         )
 

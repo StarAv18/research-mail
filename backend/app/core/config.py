@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from functools import lru_cache
+import os
 
 class Settings(BaseSettings):
     """
@@ -47,8 +48,12 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        if self.SQLALCHEMY_DATABASE_URL:
-            return self.SQLALCHEMY_DATABASE_URL
+        render_database_url = os.getenv("DATABASE_URL")
+        database_url = self.SQLALCHEMY_DATABASE_URL or render_database_url
+        if database_url:
+            if database_url.startswith("postgres://"):
+                return database_url.replace("postgres://", "postgresql://", 1)
+            return database_url
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Google OAuth
