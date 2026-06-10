@@ -24,6 +24,17 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         docs_url=f"{settings.API_V1_STR}/docs",
     )
+
+    @app.get("/")
+    def root():
+        return {
+            "status": "ok",
+            "service": "Research Internship Agent",
+        }
+
+    @app.get("/health")
+    def health():
+        return {"status": "healthy"}
     
     # Register exception handlers
     setup_exception_handlers(app)
