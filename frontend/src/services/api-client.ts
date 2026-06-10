@@ -86,7 +86,7 @@ class ApiClient {
 
     // Response interceptor for consistent error handling
     ApiClient.instance.interceptors.response.use(
-      (response) => convertKeys(response.data, toCamel),
+      (response) => convertKeys(response.data, toCamel) as any,
       (error: AxiosError<APIResponse<unknown>>) => {
         const apiError = error.response?.data?.error || error.message || 'An unexpected error occurred';
         const statusCode = error.response?.status;
