@@ -21,8 +21,9 @@ def create_app() -> FastAPI:
     
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        docs_url=f"{settings.API_V1_STR}/docs",
+        openapi_url="/openapi.json",
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
 
     @app.get("/")
