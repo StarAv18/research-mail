@@ -1,7 +1,8 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { APIResponse } from '../types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://research-mail-2.onrender.com/api/v1";
 
 if (!API_URL && typeof window === 'undefined') {
   console.warn(
