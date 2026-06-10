@@ -2,15 +2,40 @@ import * as React from "react"
 import { Users, FileEdit, Send, Activity } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { apiClient } from "@/services/api-client"
+import { APIResponse } from "@/types"
 
-const stats = [
-  { name: 'Professors Found', value: '128', icon: Users, change: '+12%', changeType: 'positive' },
-  { name: 'Drafts Created', value: '45', icon: FileEdit, change: '+5%', changeType: 'positive' },
-  { name: 'Emails Sent', value: '24', icon: Send, change: '+18%', changeType: 'positive' },
-  { name: 'Response Rate', value: '14%', icon: Activity, change: '-2%', changeType: 'negative' },
-]
+interface Metrics {
+  professorsFound: number
+  draftsCreated: number
+  emailsSent: number
+  responseRate: number
+}
 
 export function StatsGrid() {
+  const [metrics, setMetrics] = React.useState<Metrics>({
+    professorsFound: 0,
+    draftsCreated: 0,
+    emailsSent: 0,
+    responseRate: 0,
+  })
+
+  React.useEffect(() => {
+    apiClient
+      .get<any, APIResponse<Metrics>>('/system/metrics')
+      .then((response) => setMetrics(response.data))
+      .catch(() => {
+        setMetrics({ professorsFound: 0, draftsCreated: 0, emailsSent: 0, responseRate: 0 })
+      })
+  }, [])
+
+  const stats = [
+    { name: 'Professors Found', value: String(metrics.professorsFound), icon: Users, change: 'Live', changeType: 'positive' },
+    { name: 'Drafts Created', value: String(metrics.draftsCreated), icon: FileEdit, change: 'Live', changeType: 'positive' },
+    { name: 'Emails Sent', value: String(metrics.emailsSent), icon: Send, change: 'Live', changeType: 'positive' },
+    { name: 'Response Rate', value: `${metrics.responseRate}%`, icon: Activity, change: 'Tracked', changeType: 'positive' },
+  ]
+
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (

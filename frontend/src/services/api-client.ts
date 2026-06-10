@@ -6,6 +6,8 @@ const API_URL =
 
 const AI_PROVIDER_KEY = 'research_mail_ai_provider';
 const AI_API_KEY_KEY = 'research_mail_ai_api_key';
+const GMAIL_ADDRESS_KEY = 'research_mail_gmail_address';
+const GMAIL_APP_PASSWORD_KEY = 'research_mail_gmail_app_password';
 
 const toCamel = (value: string) =>
   value.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
@@ -67,6 +69,8 @@ class ApiClient {
         const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
         const aiProvider = typeof window !== 'undefined' ? localStorage.getItem(AI_PROVIDER_KEY) : null;
         const aiApiKey = typeof window !== 'undefined' ? localStorage.getItem(AI_API_KEY_KEY) : null;
+        const gmailAddress = typeof window !== 'undefined' ? localStorage.getItem(GMAIL_ADDRESS_KEY) : null;
+        const gmailAppPassword = typeof window !== 'undefined' ? localStorage.getItem(GMAIL_APP_PASSWORD_KEY) : null;
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -75,6 +79,12 @@ class ApiClient {
         }
         if (aiApiKey && config.headers) {
           config.headers['X-AI-API-Key'] = aiApiKey;
+        }
+        if (gmailAddress && config.headers) {
+          config.headers['X-Gmail-Address'] = gmailAddress;
+        }
+        if (gmailAppPassword && config.headers) {
+          config.headers['X-Gmail-App-Password'] = gmailAppPassword;
         }
         if (config.data && typeof config.data === 'object') {
           config.data = convertKeys(config.data, toSnake);
@@ -109,4 +119,4 @@ class ApiClient {
 }
 
 export const apiClient = ApiClient.getInstance();
-export { AI_API_KEY_KEY, AI_PROVIDER_KEY };
+export { AI_API_KEY_KEY, AI_PROVIDER_KEY, GMAIL_ADDRESS_KEY, GMAIL_APP_PASSWORD_KEY };

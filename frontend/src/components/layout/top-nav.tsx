@@ -9,27 +9,34 @@ import {
   Menu,
   KeyRound,
   Save,
-  X
+  X,
+  Mail
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useLayoutStore } from "@/store/use-layout-store"
-import { AI_API_KEY_KEY, AI_PROVIDER_KEY } from "@/services/api-client"
+import { AI_API_KEY_KEY, AI_PROVIDER_KEY, GMAIL_ADDRESS_KEY, GMAIL_APP_PASSWORD_KEY } from "@/services/api-client"
 
 export function TopNav() {
   const { toggleSidebar } = useLayoutStore()
   const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [provider, setProvider] = React.useState("gemini")
   const [apiKey, setApiKey] = React.useState("")
+  const [gmailAddress, setGmailAddress] = React.useState("")
+  const [gmailAppPassword, setGmailAppPassword] = React.useState("")
 
   React.useEffect(() => {
     setProvider(localStorage.getItem(AI_PROVIDER_KEY) || "gemini")
     setApiKey(localStorage.getItem(AI_API_KEY_KEY) || "")
+    setGmailAddress(localStorage.getItem(GMAIL_ADDRESS_KEY) || "")
+    setGmailAppPassword(localStorage.getItem(GMAIL_APP_PASSWORD_KEY) || "")
   }, [])
 
   const saveSettings = () => {
     localStorage.setItem(AI_PROVIDER_KEY, provider)
     localStorage.setItem(AI_API_KEY_KEY, apiKey.trim())
+    localStorage.setItem(GMAIL_ADDRESS_KEY, gmailAddress.trim())
+    localStorage.setItem(GMAIL_APP_PASSWORD_KEY, gmailAppPassword.trim())
     setSettingsOpen(false)
   }
 
@@ -120,6 +127,33 @@ export function TopNav() {
                   placeholder="Paste your provider API key"
                 />
               </label>
+
+              <div className="border-t border-white/10 pt-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Mail className="h-4 w-4 text-accent" />
+                  Gmail sending
+                </div>
+                <div className="space-y-3">
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-muted-foreground">Gmail address</span>
+                    <Input
+                      type="email"
+                      value={gmailAddress}
+                      onChange={(event) => setGmailAddress(event.target.value)}
+                      placeholder="yourname@gmail.com"
+                    />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-muted-foreground">Gmail app password</span>
+                    <Input
+                      type="password"
+                      value={gmailAppPassword}
+                      onChange={(event) => setGmailAppPassword(event.target.value)}
+                      placeholder="16-character app password"
+                    />
+                  </label>
+                </div>
+              </div>
 
               <Button className="w-full gap-2" variant="accent" onClick={saveSettings}>
                 <Save className="h-4 w-4" />

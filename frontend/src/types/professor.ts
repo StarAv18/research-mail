@@ -13,6 +13,23 @@ export interface Professor {
   updatedAt?: string;
 }
 
+export interface ProfessorSearchResult {
+  name: string;
+  university: string;
+  department?: string;
+  email?: string;
+  website?: string;
+  researchInterests: string[];
+  recentWork: string;
+  biography: string;
+}
+
+export interface ProfessorSearchResponse {
+  query: string;
+  count: number;
+  professors: ProfessorSearchResult[];
+}
+
 export interface ResearchSummary {
   id: string;
   professorId: string;

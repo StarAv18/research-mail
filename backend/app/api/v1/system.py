@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 from app.models.response import APIResponse
 from app.models.professor import Professor
+from app.models.draft import DraftStatus
+from app.models.db_models import ProfessorDB, DraftDB
+from app.core.db import get_db
 from app.services.university_scraper import UniversityProfileScraper
 from app.core.logging import get_logger
 from app.core.config import Settings, get_settings
@@ -26,4 +30,17 @@ async def health_check(
             "storage_ok": str(data_dir_ok)
         },
         message="Service is operational"
+    )
+
+@router.get("/metrics", response_model=APIResponse[dict[str, int]])
+async def metrics(db: Session = Depends(get_db)) -> APIResponse[dict[str, int]]:
+    """Dashboard metrics backed by the database."""
+    return APIResponse(
+        success=True,
+        data={
+            "professors_found": db.query(ProfessorDB).count(),
+            "drafts_created": db.query(DraftDB).count(),
+            "emails_sent": db.query(DraftDB).filter(DraftDB.status == DraftStatus.SENT).count(),
+            "response_rate": 0,
+        },
     )

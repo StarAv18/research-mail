@@ -11,7 +11,8 @@ import {
   ExternalLink,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Send
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -60,6 +61,28 @@ export default function DraftsPage() {
       addNotification({ type: 'success', message: 'Draft deleted' })
     } catch (error: any) {
       addNotification({ type: 'error', message: 'Delete failed', description: error.message })
+    }
+  }
+
+  const gmailComposeUrl = (draft: Draft) => {
+    const params = new URLSearchParams({
+      view: "cm",
+      fs: "1",
+      to: draft.professorEmail,
+      su: draft.subject,
+      body: draft.body,
+    })
+    return `https://mail.google.com/mail/?${params.toString()}`
+  }
+
+  const handleSend = async (draft: Draft) => {
+    if (!confirm(`Send this email to ${draft.professorEmail} using your saved Gmail app password?`)) return
+    try {
+      await draftsService.sendWithGmail(draft.id)
+      addNotification({ type: 'success', message: 'Email sent', description: draft.professorEmail })
+      fetchDrafts()
+    } catch (error: any) {
+      addNotification({ type: 'error', message: 'Send failed', description: error.message })
     }
   }
 
@@ -146,8 +169,19 @@ export default function DraftsPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
-                              <ExternalLink className="h-4 w-4" />
+                            <a href={gmailComposeUrl(draft)} target="_blank" rel="noreferrer">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="Open in Gmail compose">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-400"
+                              title="Send with Gmail app password"
+                              onClick={() => handleSend(draft)}
+                            >
+                              <Send className="h-4 w-4" />
                             </Button>
                           </div>
                         </td>

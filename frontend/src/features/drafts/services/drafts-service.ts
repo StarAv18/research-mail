@@ -1,5 +1,5 @@
 import { apiClient } from '@/services/api-client';
-import { Draft, APIResponse } from '@/types';
+import { Draft, ProfessorSearchResult, APIResponse } from '@/types';
 
 export const draftsService = {
   listDrafts: async (query?: string): Promise<Draft[]> => {
@@ -22,5 +22,20 @@ export const draftsService = {
   deleteDraft: async (id: string): Promise<boolean> => {
     const response = await apiClient.delete<any, APIResponse<boolean>>(`/drafts/${id}`);
     return response.data;
+  },
+
+  generateDrafts: async (
+    professors: ProfessorSearchResult[],
+    sender: { senderName: string; senderUniversity: string; senderBackground: string }
+  ): Promise<Draft[]> => {
+    const response = await apiClient.post<any, APIResponse<Draft[]>>('/drafts/generate', {
+      professors,
+      ...sender,
+    });
+    return response.data;
+  },
+
+  sendWithGmail: async (id: string): Promise<void> => {
+    await apiClient.post(`/drafts/${id}/send-gmail`);
   },
 };
