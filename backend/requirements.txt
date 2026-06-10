@@ -1,11 +1,7 @@
---only-binary=pydantic-core
---only-binary=cryptography
---only-binary=bcrypt
-
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-pydantic[email]==2.6.0
-pydantic-settings==2.1.0
+pydantic[email]==2.13.4
+pydantic-settings==2.14.1
 python-multipart==0.0.6
 httpx==0.26.0
 python-jose[cryptography]==3.3.0
