@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
 import httpx
 import re
@@ -14,6 +14,11 @@ from app.core.db import get_db
 from app.api.deps import get_scraper_service
 
 router = APIRouter()
+
+class SearchHit(TypedDict):
+    url: str
+    title: str
+    snippet: str
 
 class ProfessorSearchResult(BaseModel):
     name: str
@@ -56,13 +61,14 @@ async def search_professors(
         if not query:
             query = "computer science professor faculty research email"
 
-        urls = await _search_web(query=query, limit=limit * 2)
+        hits = await _search_web(query=query, limit=limit * 2)
         professors: list[ProfessorSearchResult] = []
         seen: set[str] = set()
 
-        for url in urls:
+        for hit in hits:
             if len(professors) >= limit:
                 break
+            url = hit["url"]
             if url in seen:
                 continue
             seen.add(url)
@@ -70,24 +76,33 @@ async def search_professors(
             try:
                 professor = await scraper.scrape(url)
             except Exception:
-                continue
+                professor = None
 
-            if professor.name == "Unknown Name" and not professor.email:
-                continue
-
-            biography = professor.biography or ""
-            interests = _extract_interests(biography, research_area)
-            recent_work = _extract_recent_work(biography)
-            result = ProfessorSearchResult(
-                name=professor.name,
-                university=professor.university,
-                department=professor.department,
-                email=str(professor.email) if professor.email else None,
-                website=str(professor.website) if professor.website else url,
-                research_interests=interests,
-                recent_work=recent_work,
-                biography=biography[:1200],
-            )
+            if professor and (professor.name != "Unknown Name" or professor.email):
+                biography = professor.biography or hit["snippet"]
+                result = ProfessorSearchResult(
+                    name=professor.name,
+                    university=professor.university,
+                    department=professor.department,
+                    email=str(professor.email) if professor.email else None,
+                    website=str(professor.website) if professor.website else url,
+                    research_interests=_extract_interests(biography, research_area),
+                    recent_work=_extract_recent_work(biography),
+                    biography=biography[:1200],
+                )
+            else:
+                name = _name_from_search_title(hit["title"])
+                if not name:
+                    continue
+                result = ProfessorSearchResult(
+                    name=name,
+                    university=_university_from_query_or_url(institution, url),
+                    email=None,
+                    website=url,
+                    research_interests=_extract_interests(hit["snippet"], research_area),
+                    recent_work=hit["snippet"][:300],
+                    biography=hit["snippet"][:1200],
+                )
             professors.append(result)
             _upsert_professor(db, result)
 
@@ -99,13 +114,22 @@ async def search_professors(
         data = ProfessorSearchResponse(query=research_area or institution or "search", count=0, professors=[])
         return APIResponse(success=True, data=data, message=f"Search could not complete: {type(exc).__name__}: {exc}")
 
-async def _search_web(query: str, limit: int) -> list[str]:
+async def _search_web(query: str, limit: int) -> list[SearchHit]:
     urls = await _search_duckduckgo(query, limit)
     if len(urls) < limit:
         urls.extend(await _search_bing(query, limit - len(urls)))
-    return list(dict.fromkeys(urls))[:limit]
+    deduped: list[SearchHit] = []
+    seen: set[str] = set()
+    for hit in urls:
+        if hit["url"] in seen:
+            continue
+        seen.add(hit["url"])
+        deduped.append(hit)
+        if len(deduped) >= limit:
+            break
+    return deduped
 
-async def _search_duckduckgo(query: str, limit: int) -> list[str]:
+async def _search_duckduckgo(query: str, limit: int) -> list[SearchHit]:
     search_url = "https://html.duckduckgo.com/html/?" + urlencode({"q": query})
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
@@ -116,7 +140,7 @@ async def _search_duckduckgo(query: str, limit: int) -> list[str]:
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
-    urls: list[str] = []
+    urls: list[SearchHit] = []
     for link in soup.select("a.result__a"):
         href = link.get("href")
         if not href:
@@ -130,12 +154,18 @@ async def _search_duckduckgo(query: str, limit: int) -> list[str]:
             continue
         if any(blocked in href for blocked in ["duckduckgo.com", "facebook.com", "linkedin.com", "twitter.com"]):
             continue
-        urls.append(href)
+        container = link.find_parent(class_="result")
+        snippet_el = container.select_one(".result__snippet") if container else None
+        urls.append({
+            "url": href,
+            "title": link.get_text(" ", strip=True),
+            "snippet": snippet_el.get_text(" ", strip=True) if snippet_el else "",
+        })
         if len(urls) >= limit:
             break
     return urls
 
-async def _search_bing(query: str, limit: int) -> list[str]:
+async def _search_bing(query: str, limit: int) -> list[SearchHit]:
     search_url = "https://www.bing.com/search?" + urlencode({"q": query})
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
@@ -146,14 +176,22 @@ async def _search_bing(query: str, limit: int) -> list[str]:
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
-    urls: list[str] = []
-    for link in soup.select("li.b_algo h2 a, h2 a"):
+    urls: list[SearchHit] = []
+    for item in soup.select("li.b_algo"):
+        link = item.select_one("h2 a")
+        if not link:
+            continue
         href = link.get("href")
         if not href or not href.startswith("http"):
             continue
         if any(blocked in href for blocked in ["bing.com", "facebook.com", "linkedin.com", "twitter.com"]):
             continue
-        urls.append(href)
+        snippet = item.select_one(".b_caption p")
+        urls.append({
+            "url": href,
+            "title": link.get_text(" ", strip=True),
+            "snippet": snippet.get_text(" ", strip=True) if snippet else "",
+        })
         if len(urls) >= limit:
             break
     return urls
@@ -208,3 +246,19 @@ def _upsert_professor(db: Session, professor: ProfessorSearchResult) -> None:
         research_interests=professor.research_interests,
         biography=professor.biography,
     ))
+
+def _name_from_search_title(title: str) -> str | None:
+    cleaned = re.sub(r"\s*[-|–].*$", "", title).strip()
+    cleaned = re.sub(r"\b(Profile|Faculty|People|Directory|Research|Lab|Group)\b", "", cleaned, flags=re.I).strip()
+    words = [word for word in cleaned.split() if word[:1].isupper() or "." in word]
+    if len(words) >= 2:
+        return " ".join(words[:4])
+    return cleaned if len(cleaned.split()) >= 2 else None
+
+def _university_from_query_or_url(institution: str, url: str) -> str:
+    if institution:
+        return institution
+    domain_match = re.search(r"https?://(?:www\.)?([a-zA-Z0-9.-]+)", url)
+    if not domain_match:
+        return "Unknown University"
+    return domain_match.group(1).split(".")[0].replace("-", " ").title()
