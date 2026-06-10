@@ -50,49 +50,54 @@ async def search_professors(
     scraper: UniversityProfileScraper = Depends(get_scraper_service),
 ) -> APIResponse[ProfessorSearchResponse]:
     """Search the public web for professor pages, scrape them, and persist found professors."""
-    terms = [research_area, institution, country, region, "professor faculty research email"]
-    query = " ".join(term.strip() for term in terms if term and term.strip())
-    if not query:
-        query = "computer science professor faculty research email"
+    try:
+        terms = [research_area, institution, country, region, "professor faculty research email"]
+        query = " ".join(term.strip() for term in terms if term and term.strip())
+        if not query:
+            query = "computer science professor faculty research email"
 
-    urls = await _search_web(query=query, limit=limit * 2)
-    professors: list[ProfessorSearchResult] = []
-    seen: set[str] = set()
+        urls = await _search_web(query=query, limit=limit * 2)
+        professors: list[ProfessorSearchResult] = []
+        seen: set[str] = set()
 
-    for url in urls:
-        if len(professors) >= limit:
-            break
-        if url in seen:
-            continue
-        seen.add(url)
+        for url in urls:
+            if len(professors) >= limit:
+                break
+            if url in seen:
+                continue
+            seen.add(url)
 
-        try:
-            professor = await scraper.scrape(url)
-        except Exception:
-            continue
+            try:
+                professor = await scraper.scrape(url)
+            except Exception:
+                continue
 
-        if professor.name == "Unknown Name" and not professor.email:
-            continue
+            if professor.name == "Unknown Name" and not professor.email:
+                continue
 
-        biography = professor.biography or ""
-        interests = _extract_interests(biography, research_area)
-        recent_work = _extract_recent_work(biography)
-        result = ProfessorSearchResult(
-            name=professor.name,
-            university=professor.university,
-            department=professor.department,
-            email=str(professor.email) if professor.email else None,
-            website=str(professor.website) if professor.website else url,
-            research_interests=interests,
-            recent_work=recent_work,
-            biography=biography[:1200],
-        )
-        professors.append(result)
-        _upsert_professor(db, result)
+            biography = professor.biography or ""
+            interests = _extract_interests(biography, research_area)
+            recent_work = _extract_recent_work(biography)
+            result = ProfessorSearchResult(
+                name=professor.name,
+                university=professor.university,
+                department=professor.department,
+                email=str(professor.email) if professor.email else None,
+                website=str(professor.website) if professor.website else url,
+                research_interests=interests,
+                recent_work=recent_work,
+                biography=biography[:1200],
+            )
+            professors.append(result)
+            _upsert_professor(db, result)
 
-    db.commit()
-    data = ProfessorSearchResponse(query=query, count=len(professors), professors=professors)
-    return APIResponse(success=True, data=data, message=f"Found {len(professors)} professor profiles")
+        db.commit()
+        data = ProfessorSearchResponse(query=query, count=len(professors), professors=professors)
+        return APIResponse(success=True, data=data, message=f"Found {len(professors)} professor profiles")
+    except Exception as exc:
+        db.rollback()
+        data = ProfessorSearchResponse(query=research_area or institution or "search", count=0, professors=[])
+        return APIResponse(success=True, data=data, message=f"Search could not complete: {type(exc).__name__}: {exc}")
 
 async def _search_web(query: str, limit: int) -> list[str]:
     urls = await _search_duckduckgo(query, limit)
