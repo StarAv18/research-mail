@@ -222,7 +222,8 @@ async def _search_openalex(
             if inst_response.status_code == 200:
                 inst_results = inst_response.json().get("results", [])
                 if inst_results:
-                    institution_id = inst_results[0].get("id")
+                    raw_institution_id = inst_results[0].get("id")
+                    institution_id = raw_institution_id.rsplit("/", 1)[-1] if raw_institution_id else None
                     institution_name = inst_results[0].get("display_name") or institution
 
         filters = []
