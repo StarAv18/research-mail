@@ -95,11 +95,20 @@ async def search_professors(
     return APIResponse(success=True, data=data, message=f"Found {len(professors)} professor profiles")
 
 async def _search_web(query: str, limit: int) -> list[str]:
+    urls = await _search_duckduckgo(query, limit)
+    if len(urls) < limit:
+        urls.extend(await _search_bing(query, limit - len(urls)))
+    return list(dict.fromkeys(urls))[:limit]
+
+async def _search_duckduckgo(query: str, limit: int) -> list[str]:
     search_url = "https://html.duckduckgo.com/html/?" + urlencode({"q": query})
     headers = {"User-Agent": "Mozilla/5.0"}
-    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-        response = await client.get(search_url, headers=headers)
-        response.raise_for_status()
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            response = await client.get(search_url, headers=headers)
+            response.raise_for_status()
+    except Exception:
+        return []
 
     soup = BeautifulSoup(response.text, "html.parser")
     urls: list[str] = []
@@ -107,14 +116,37 @@ async def _search_web(query: str, limit: int) -> list[str]:
         href = link.get("href")
         if not href:
             continue
-        if href.startswith("//"):
-            href = "https:" + href
-        if href.startswith("/"):
-            parsed = parse_qs(urlparse(href).query)
-            if "uddg" not in parsed:
-                continue
+        parsed = parse_qs(urlparse(href).query)
+        if "uddg" in parsed:
             href = unquote(parsed["uddg"][0])
+        elif href.startswith("//"):
+            href = "https:" + href
+        elif href.startswith("/"):
+            continue
         if any(blocked in href for blocked in ["duckduckgo.com", "facebook.com", "linkedin.com", "twitter.com"]):
+            continue
+        urls.append(href)
+        if len(urls) >= limit:
+            break
+    return urls
+
+async def _search_bing(query: str, limit: int) -> list[str]:
+    search_url = "https://www.bing.com/search?" + urlencode({"q": query})
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            response = await client.get(search_url, headers=headers)
+            response.raise_for_status()
+    except Exception:
+        return []
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    urls: list[str] = []
+    for link in soup.select("li.b_algo h2 a, h2 a"):
+        href = link.get("href")
+        if not href or not href.startswith("http"):
+            continue
+        if any(blocked in href for blocked in ["bing.com", "facebook.com", "linkedin.com", "twitter.com"]):
             continue
         urls.append(href)
         if len(urls) >= limit:
