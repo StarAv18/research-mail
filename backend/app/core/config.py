@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "https://research-internship-agent.vercel.app",
+        "https://research-mail-zmt6-sandy.vercel.app",
     ]
+    BACKEND_CORS_ORIGIN_REGEX: str = r"^https://.*\.vercel\.app$"
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
