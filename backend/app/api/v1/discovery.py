@@ -106,6 +106,11 @@ async def search_professors(
             professors.append(result)
             _upsert_professor(db, result)
 
+        if len(professors) < limit:
+            for result in await _search_openalex(research_area, institution, country, limit - len(professors)):
+                professors.append(result)
+                _upsert_professor(db, result)
+
         db.commit()
         data = ProfessorSearchResponse(query=query, count=len(professors), professors=professors)
         return APIResponse(success=True, data=data, message=f"Found {len(professors)} professor profiles")
@@ -195,6 +200,98 @@ async def _search_bing(query: str, limit: int) -> list[SearchHit]:
         if len(urls) >= limit:
             break
     return urls
+
+async def _search_openalex(
+    research_area: str,
+    institution: str,
+    country: str,
+    limit: int,
+) -> list[ProfessorSearchResult]:
+    if limit <= 0:
+        return []
+
+    headers = {"User-Agent": "research-mail/1.0 (mailto:research@example.com)"}
+    institution_id: str | None = None
+    institution_name = institution
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=headers) as client:
+        if institution:
+            inst_response = await client.get(
+                "https://api.openalex.org/institutions",
+                params={"search": institution, "per-page": 1},
+            )
+            if inst_response.status_code == 200:
+                inst_results = inst_response.json().get("results", [])
+                if inst_results:
+                    institution_id = inst_results[0].get("id")
+                    institution_name = inst_results[0].get("display_name") or institution
+
+        filters = []
+        if institution_id:
+            filters.append(f"last_known_institutions.id:{institution_id}")
+        author_params = {
+            "search": research_area or institution or "research",
+            "per-page": limit,
+            "sort": "works_count:desc",
+        }
+        if filters:
+            author_params["filter"] = ",".join(filters)
+
+        author_response = await client.get("https://api.openalex.org/authors", params=author_params)
+        if author_response.status_code != 200:
+            return []
+
+        results: list[ProfessorSearchResult] = []
+        for author in author_response.json().get("results", []):
+            author_id = author.get("id", "")
+            author_name = author.get("display_name")
+            if not author_name:
+                continue
+
+            author_institutions = author.get("last_known_institutions") or []
+            resolved_institution = institution_name or "Unknown Institution"
+            if author_institutions:
+                resolved_institution = author_institutions[0].get("display_name") or resolved_institution
+
+            topics = [
+                topic.get("display_name")
+                for topic in (author.get("topics") or [])[:5]
+                if topic.get("display_name")
+            ]
+            if research_area:
+                topics.insert(0, research_area.title())
+            topics = list(dict.fromkeys(topics))[:6]
+
+            recent_work = await _openalex_recent_work(client, author_id)
+            results.append(ProfessorSearchResult(
+                name=author_name,
+                university=resolved_institution,
+                email=None,
+                website=author_id or None,
+                research_interests=topics,
+                recent_work=recent_work,
+                biography=recent_work,
+            ))
+        return results
+
+async def _openalex_recent_work(client: httpx.AsyncClient, author_id: str) -> str:
+    if not author_id:
+        return ""
+    response = await client.get(
+        "https://api.openalex.org/works",
+        params={
+            "filter": f"authorships.author.id:{author_id}",
+            "sort": "publication_date:desc",
+            "per-page": 2,
+        },
+    )
+    if response.status_code != 200:
+        return ""
+    titles = [
+        work.get("display_name")
+        for work in response.json().get("results", [])
+        if work.get("display_name")
+    ]
+    return "; ".join(titles)
 
 def _extract_interests(text: str, seed: str) -> list[str]:
     candidates = [
