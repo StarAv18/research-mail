@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, DateTime, JSON, Text, ForeignKey, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.db import Base
-from app.models.enums import DraftStatus
+from app.models.draft import DraftStatus
 
 class ProfessorDB(Base):
     __tablename__ = "professors"

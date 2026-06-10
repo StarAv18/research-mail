@@ -11,6 +11,7 @@ from app.services.summarization import SummarizationService
 from app.services.outreach_service import OutreachService
 from app.services.bulk_email_service import BulkEmailService
 from app.services.safety_service import SafetyService
+from app.services.university_scraper import UniversityProfileScraper
 from functools import lru_cache
 
 # Repository singletons (since they handle file locking)
