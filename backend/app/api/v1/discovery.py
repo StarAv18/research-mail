@@ -14,6 +14,7 @@ from app.core.db import get_db
 from app.api.deps import get_scraper_service
 
 router = APIRouter()
+DISCOVERY_ENGINE_VERSION = "works-v3"
 
 class SearchHit(TypedDict):
     url: str
@@ -111,13 +112,18 @@ async def search_professors(
                 professors.append(result)
                 _upsert_professor(db, result)
 
+        if len(professors) == 0:
+            for result in await _search_openalex(research_area, "", country, limit):
+                professors.append(result)
+                _upsert_professor(db, result)
+
         db.commit()
         data = ProfessorSearchResponse(query=query, count=len(professors), professors=professors)
-        return APIResponse(success=True, data=data, message=f"Found {len(professors)} professor profiles")
+        return APIResponse(success=True, data=data, message=f"{DISCOVERY_ENGINE_VERSION}: found {len(professors)} professor profiles")
     except Exception as exc:
         db.rollback()
         data = ProfessorSearchResponse(query=research_area or institution or "search", count=0, professors=[])
-        return APIResponse(success=True, data=data, message=f"Search could not complete: {type(exc).__name__}: {exc}")
+        return APIResponse(success=True, data=data, message=f"{DISCOVERY_ENGINE_VERSION}: search could not complete: {type(exc).__name__}: {exc}")
 
 async def _search_web(query: str, limit: int) -> list[SearchHit]:
     urls = await _search_duckduckgo(query, limit)
