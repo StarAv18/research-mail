@@ -14,7 +14,7 @@ from app.core.db import get_db
 from app.api.deps import get_scraper_service
 
 router = APIRouter()
-DISCOVERY_ENGINE_VERSION = "works-v3"
+DISCOVERY_ENGINE_VERSION = "works-v4"
 
 class SearchHit(TypedDict):
     url: str
@@ -232,23 +232,24 @@ async def _search_openalex(
                     institution_id = raw_institution_id.rsplit("/", 1)[-1] if raw_institution_id else None
                     institution_name = inst_results[0].get("display_name") or institution
 
-        filters = [f"default.search:{research_area or institution or 'research'}"]
+        filters = []
         if institution_id:
             filters.append(f"institutions.id:{institution_id}")
 
-        works_response = await client.get(
-            "https://api.openalex.org/works",
-            params={
-                "filter": ",".join(filters),
-                "per-page": max(limit * 4, 12),
-                "sort": "cited_by_count:desc",
-            },
-        )
+        works_params = {
+            "search": research_area or institution or "research",
+            "per-page": max(limit * 4, 12),
+            "sort": "cited_by_count:desc",
+        }
+        if filters:
+            works_params["filter"] = ",".join(filters)
+
+        works_response = await client.get("https://api.openalex.org/works", params=works_params)
         if works_response.status_code != 200 and institution_id:
             works_response = await client.get(
                 "https://api.openalex.org/works",
                 params={
-                    "filter": f"default.search:{research_area or institution or 'research'}",
+                    "search": research_area or institution or "research",
                     "per-page": max(limit * 4, 12),
                     "sort": "cited_by_count:desc",
                 },
