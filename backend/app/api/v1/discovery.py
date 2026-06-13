@@ -226,53 +226,124 @@ async def _search_openalex(
                     institution_id = raw_institution_id.rsplit("/", 1)[-1] if raw_institution_id else None
                     institution_name = inst_results[0].get("display_name") or institution
 
-        filters = []
+        filters = [f"default.search:{research_area or institution or 'research'}"]
         if institution_id:
-            filters.append(f"last_known_institutions.id:{institution_id}")
-        author_params = {
-            "search": research_area or institution or "research",
-            "per-page": limit,
-            "sort": "works_count:desc",
-        }
-        if filters:
-            author_params["filter"] = ",".join(filters)
+            filters.append(f"institutions.id:{institution_id}")
 
-        author_response = await client.get("https://api.openalex.org/authors", params=author_params)
-        if author_response.status_code != 200:
+        works_response = await client.get(
+            "https://api.openalex.org/works",
+            params={
+                "filter": ",".join(filters),
+                "per-page": max(limit * 4, 12),
+                "sort": "cited_by_count:desc",
+            },
+        )
+        if works_response.status_code != 200 and institution_id:
+            works_response = await client.get(
+                "https://api.openalex.org/works",
+                params={
+                    "filter": f"default.search:{research_area or institution or 'research'}",
+                    "per-page": max(limit * 4, 12),
+                    "sort": "cited_by_count:desc",
+                },
+            )
+        if works_response.status_code != 200:
             return []
 
-        results: list[ProfessorSearchResult] = []
-        for author in author_response.json().get("results", []):
-            author_id = author.get("id", "")
+        return _professors_from_openalex_works(
+            works_response.json().get("results", []),
+            institution_id=institution_id,
+            institution_name=institution_name,
+            research_area=research_area,
+            limit=limit,
+        )
+
+def _professors_from_openalex_works(
+    works: list[dict],
+    institution_id: str | None,
+    institution_name: str,
+    research_area: str,
+    limit: int,
+) -> list[ProfessorSearchResult]:
+    by_author: dict[str, dict] = {}
+    for work in works:
+        title = work.get("display_name") or work.get("title") or ""
+        if not title:
+            continue
+        topics = [
+            topic.get("display_name")
+            for topic in (work.get("topics") or [])[:4]
+            if topic.get("display_name")
+        ]
+        if research_area:
+            topics.insert(0, research_area.title())
+
+        for authorship in work.get("authorships") or []:
+            author = authorship.get("author") or {}
             author_name = author.get("display_name")
-            if not author_name:
+            author_id = author.get("id") or author_name
+            if not author_name or _looks_like_group_author(author_name):
                 continue
 
-            author_institutions = author.get("last_known_institutions") or []
-            resolved_institution = institution_name or "Unknown Institution"
-            if author_institutions:
-                resolved_institution = author_institutions[0].get("display_name") or resolved_institution
-
-            topics = [
-                topic.get("display_name")
-                for topic in (author.get("topics") or [])[:5]
-                if topic.get("display_name")
+            institutions = authorship.get("institutions") or []
+            matching_institutions = [
+                inst for inst in institutions
+                if not institution_id or institution_id in _openalex_institution_ids(inst)
             ]
-            if research_area:
-                topics.insert(0, research_area.title())
-            topics = list(dict.fromkeys(topics))[:6]
+            if institution_id and not matching_institutions:
+                continue
 
-            recent_work = await _openalex_recent_work(client, author_id)
-            results.append(ProfessorSearchResult(
-                name=author_name,
-                university=resolved_institution,
-                email=None,
-                website=author_id or None,
-                research_interests=topics,
-                recent_work=recent_work,
-                biography=recent_work,
-            ))
-        return results
+            institution = matching_institutions[0] if matching_institutions else (institutions[0] if institutions else {})
+            resolved_institution = institution.get("display_name") or institution_name or "Unknown Institution"
+            raw_affiliations = " ".join(authorship.get("raw_affiliation_strings") or [])
+            email = _extract_email(raw_affiliations)
+
+            record = by_author.setdefault(author_id, {
+                "name": author_name,
+                "university": resolved_institution,
+                "email": email,
+                "website": author.get("id"),
+                "topics": [],
+                "works": [],
+            })
+            if email and not record["email"]:
+                record["email"] = email
+            record["topics"].extend(topics)
+            record["works"].append(f"{title} ({work.get('publication_year', 'n.d.')})")
+
+            if len(by_author) >= limit * 2:
+                break
+        if len(by_author) >= limit * 2:
+            break
+
+    results: list[ProfessorSearchResult] = []
+    for record in by_author.values():
+        topics = list(dict.fromkeys(item for item in record["topics"] if item))[:6]
+        works_text = "; ".join(list(dict.fromkeys(record["works"]))[:3])
+        results.append(ProfessorSearchResult(
+            name=record["name"],
+            university=record["university"],
+            email=record["email"],
+            website=record["website"],
+            research_interests=topics,
+            recent_work=works_text,
+            biography=works_text,
+        ))
+        if len(results) >= limit:
+            break
+    return results
+
+def _looks_like_group_author(name: str) -> bool:
+    lowered = name.lower()
+    return any(word in lowered for word in ["consortium", "collaboration", "group", "ieee", "robotics"])
+
+def _extract_email(text: str) -> str | None:
+    match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", text)
+    return match.group(0).lower() if match else None
+
+def _openalex_institution_ids(institution: dict) -> list[str]:
+    values = [institution.get("id") or "", *(institution.get("lineage") or [])]
+    return [value.rsplit("/", 1)[-1] for value in values if value]
 
 async def _openalex_recent_work(client: httpx.AsyncClient, author_id: str) -> str:
     if not author_id:
