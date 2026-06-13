@@ -9,6 +9,7 @@ export interface Professor {
   biography?: string;
   fitScore?: number;
   country?: string;
+  recentPublications: string[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -19,7 +20,9 @@ export interface ProfessorSearchResult {
   department?: string;
   email?: string;
   website?: string;
+  country?: string;
   researchInterests: string[];
+  recentPublications: string[];
   recentWork: string;
   biography: string;
 }
@@ -27,6 +30,8 @@ export interface ProfessorSearchResult {
 export interface ProfessorSearchResponse {
   query: string;
   count: number;
+  page: number;
+  limit: number;
   professors: ProfessorSearchResult[];
 }
 

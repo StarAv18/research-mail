@@ -86,7 +86,11 @@ class ApiClient {
         if (gmailAppPassword && config.headers) {
           config.headers['X-Gmail-App-Password'] = gmailAppPassword;
         }
-        if (config.data && typeof config.data === 'object') {
+        if (
+          config.data &&
+          typeof config.data === 'object' &&
+          !(typeof FormData !== 'undefined' && config.data instanceof FormData)
+        ) {
           config.data = convertKeys(config.data, toSnake);
         }
         return config;

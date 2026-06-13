@@ -1,4 +1,5 @@
 import {
+  Files,
   FileText,
   LayoutDashboard,
   type LucideIcon,
@@ -27,6 +28,11 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     name: "Drafts",
     href: "/drafts",
     icon: FileText,
+  },
+  {
+    name: "Documents",
+    href: "/documents",
+    icon: Files,
   },
   {
     name: "Outreach",

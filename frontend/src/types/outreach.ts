@@ -15,6 +15,9 @@ export interface Draft {
   subject: string;
   body: string;
   status: DraftStatus;
+  personalizationNotes?: string;
+  currentVersion: number;
+  versionCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,4 +30,16 @@ export interface OutreachHistory {
   provider: string;
   messageId: string;
   subject: string;
+}
+
+export interface DraftVersion {
+  id: string;
+  draftId: string;
+  versionNumber: number;
+  subject: string;
+  body: string;
+  editor: string;
+  changeReason: string;
+  createdAt: string;
+  updatedAt?: string;
 }

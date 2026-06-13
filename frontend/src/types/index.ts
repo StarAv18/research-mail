@@ -1,5 +1,8 @@
 export * from './professor';
 export * from './outreach';
+export * from './document';
+export * from './campaign';
+export * from './activity';
 
 export interface StudentProfile {
   id: string;

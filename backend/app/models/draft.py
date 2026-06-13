@@ -30,3 +30,15 @@ class Draft(TimestampedModel):
     subject: str = Field(..., description="Email subject line", min_length=5, max_length=200)
     body: str = Field(..., description="Email body content", min_length=100)
     status: DraftStatus = Field(default=DraftStatus.PENDING, description="Current status of the draft")
+    personalization_notes: Optional[str] = Field(default=None, description="Notes describing the personalized context")
+    current_version: int = Field(default=1, description="Current saved version number")
+    version_count: int = Field(default=1, description="Total saved versions")
+
+
+class DraftVersion(TimestampedModel):
+    draft_id: str = Field(..., description="Parent draft identifier")
+    version_number: int = Field(..., ge=1)
+    subject: str = Field(..., min_length=5, max_length=200)
+    body: str = Field(..., min_length=20)
+    editor: str = Field(default="system")
+    change_reason: str = Field(default="initial")

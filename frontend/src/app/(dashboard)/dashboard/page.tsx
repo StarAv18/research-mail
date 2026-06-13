@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { StatsGrid } from "@/features/dashboard/components/stats-grid"
 import { RecentActivity } from "@/features/dashboard/components/recent-activity"
 import { AISuggestion } from "@/features/dashboard/components/ai-suggestion"
+import { AnalyticsOverview } from "@/features/dashboard/components/analytics-overview"
 
 export default function DashboardPage() {
   return (
@@ -30,20 +31,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="min-h-[400px]">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="space-y-0.5">
-                <CardTitle className="text-xl">Outreach Overview</CardTitle>
-                <CardDescription>Activity across universities over time</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="hidden sm:flex h-8">
-                View Detailed Analytics
-              </Button>
-            </CardHeader>
-            <CardContent className="flex h-[300px] items-center justify-center text-muted-foreground italic border-t border-white/5 mt-4">
-              Chart visualization implementation pending...
-            </CardContent>
-          </Card>
+          <AnalyticsOverview />
 
           <Card>
             <CardHeader>

@@ -38,6 +38,14 @@ class Professor(TimestampedModel):
         default_factory=list, 
         description="List of research areas or keywords"
     )
+    country: Optional[str] = Field(
+        None,
+        description="Country of the institution or professor"
+    )
+    recent_publications: List[str] = Field(
+        default_factory=list,
+        description="Recent publications or notable papers"
+    )
     biography: Optional[str] = Field(
         None, 
         description="Short professional biography or description", 

@@ -1,5 +1,5 @@
 import { apiClient } from '@/services/api-client';
-import { Draft, ProfessorSearchResult, APIResponse } from '@/types';
+import { Draft, DraftVersion, ProfessorSearchResult, APIResponse } from '@/types';
 
 export const draftsService = {
   listDrafts: async (query?: string): Promise<Draft[]> => {
@@ -16,6 +16,27 @@ export const draftsService = {
 
   updateDraft: async (id: string, draft: Partial<Draft>): Promise<Draft> => {
     const response = await apiClient.put<any, APIResponse<Draft>>(`/drafts/${id}`, draft);
+    return response.data;
+  },
+
+  listVersions: async (id: string): Promise<DraftVersion[]> => {
+    const response = await apiClient.get<any, APIResponse<DraftVersion[]>>(`/drafts/${id}/versions`);
+    return response.data;
+  },
+
+  saveVersion: async (
+    id: string,
+    payload: { subject: string; body: string; editor?: string; changeReason?: string }
+  ): Promise<Draft> => {
+    const response = await apiClient.post<any, APIResponse<Draft>>(`/drafts/${id}/versions`, payload);
+    return response.data;
+  },
+
+  regenerateDraft: async (
+    id: string,
+    payload: { senderName: string; senderUniversity: string; senderBackground: string }
+  ): Promise<Draft> => {
+    const response = await apiClient.post<any, APIResponse<Draft>>(`/drafts/${id}/regenerate`, payload);
     return response.data;
   },
 

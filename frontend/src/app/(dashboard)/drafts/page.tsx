@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { draftsService } from "@/features/drafts/services/drafts-service"
-import { Draft, DraftStatus } from "@/types"
+import { Draft, DraftStatus, DraftVersion } from "@/types"
 import { useNotificationStore } from "@/store/use-notification-store"
 
 const statusConfig = {
@@ -35,6 +35,13 @@ export default function DraftsPage() {
   const [drafts, setDrafts] = React.useState<Draft[]>([])
   const [loading, setLoading] = React.useState(true)
   const [search, setSearch] = React.useState("")
+  const [selectedDraft, setSelectedDraft] = React.useState<Draft | null>(null)
+  const [editorSubject, setEditorSubject] = React.useState("")
+  const [editorBody, setEditorBody] = React.useState("")
+  const [versions, setVersions] = React.useState<DraftVersion[]>([])
+  const [senderName, setSenderName] = React.useState("A prospective research intern")
+  const [senderUniversity, setSenderUniversity] = React.useState("my university")
+  const [senderBackground, setSenderBackground] = React.useState("I am interested in research opportunities and would value the chance to contribute to your lab.")
   const addNotification = useNotificationStore((s) => s.addNotification)
 
   const fetchDrafts = React.useCallback(async () => {
@@ -61,6 +68,54 @@ export default function DraftsPage() {
       addNotification({ type: 'success', message: 'Draft deleted' })
     } catch (error: any) {
       addNotification({ type: 'error', message: 'Delete failed', description: error.message })
+    }
+  }
+
+  const openEditor = async (draft: Draft) => {
+    setSelectedDraft(draft)
+    setEditorSubject(draft.subject)
+    setEditorBody(draft.body)
+    try {
+      setVersions(await draftsService.listVersions(draft.id))
+    } catch {
+      setVersions([])
+    }
+  }
+
+  const saveVersion = async () => {
+    if (!selectedDraft) return
+    try {
+      const updated = await draftsService.saveVersion(selectedDraft.id, {
+        subject: editorSubject,
+        body: editorBody,
+        editor: 'user',
+        changeReason: 'manual edit',
+      })
+      setSelectedDraft(updated)
+      setDrafts((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setVersions(await draftsService.listVersions(updated.id))
+      addNotification({ type: 'success', message: 'Draft version saved', description: `Version ${updated.currentVersion}` })
+    } catch (error: any) {
+      addNotification({ type: 'error', message: 'Save failed', description: error.message })
+    }
+  }
+
+  const regenerate = async () => {
+    if (!selectedDraft) return
+    try {
+      const updated = await draftsService.regenerateDraft(selectedDraft.id, {
+        senderName,
+        senderUniversity,
+        senderBackground,
+      })
+      setSelectedDraft(updated)
+      setEditorSubject(updated.subject)
+      setEditorBody(updated.body)
+      setDrafts((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setVersions(await draftsService.listVersions(updated.id))
+      addNotification({ type: 'success', message: 'Draft regenerated', description: `Version ${updated.currentVersion}` })
+    } catch (error: any) {
+      addNotification({ type: 'error', message: 'Regenerate failed', description: error.message })
     }
   }
 
@@ -158,7 +213,7 @@ export default function DraftsPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditor(draft)}>
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -200,6 +255,54 @@ export default function DraftsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {selectedDraft && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Draft Editor</CardTitle>
+            <CardDescription>
+              Version {selectedDraft.currentVersion} of {selectedDraft.versionCount} for {selectedDraft.professorName}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Input value={senderName} onChange={(event) => setSenderName(event.target.value)} placeholder="Your name" />
+              <Input value={senderUniversity} onChange={(event) => setSenderUniversity(event.target.value)} placeholder="Your university" />
+              <Input value={senderBackground} onChange={(event) => setSenderBackground(event.target.value)} placeholder="Your background" />
+            </div>
+            <Input value={editorSubject} onChange={(event) => setEditorSubject(event.target.value)} placeholder="Subject" />
+            <textarea
+              className="min-h-[260px] w-full rounded-md border border-white/10 bg-muted/20 p-3 text-sm"
+              value={editorBody}
+              onChange={(event) => setEditorBody(event.target.value)}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="accent" onClick={saveVersion}>Save New Version</Button>
+              <Button variant="outline" onClick={regenerate}>Regenerate</Button>
+            </div>
+            <div className="rounded-lg border border-white/10 p-4">
+              <div className="text-sm font-medium text-foreground/90">Version History</div>
+              <div className="mt-3 space-y-2">
+                {versions.map((version) => (
+                  <button
+                    key={version.id}
+                    className="w-full rounded-md bg-muted/20 p-3 text-left"
+                    onClick={() => {
+                      setEditorSubject(version.subject)
+                      setEditorBody(version.body)
+                    }}
+                  >
+                    <div className="font-medium text-foreground/90">Version {version.versionNumber}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {version.changeReason} · {new Date(version.createdAt).toLocaleString()}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

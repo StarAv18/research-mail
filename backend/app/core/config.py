@@ -63,11 +63,15 @@ class Settings(BaseSettings):
     
     # Storage
     DATA_DIR: str = "data"
+    DOCUMENTS_DIR: str = "data/documents"
+    DEFAULT_USER_EMAIL: str = "demo@research-mail.local"
+    DEFAULT_USER_NAME: str = "Research Mail User"
     
     # AI Keys
     OPENROUTER_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
     OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OPENALEX_MAILTO: str = "research-mail@example.com"
     
     # AI Default Models
     DEFAULT_AI_PROVIDER: str = "ollama"

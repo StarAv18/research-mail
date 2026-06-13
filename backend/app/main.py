@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.core.exceptions import setup_exception_handlers
 from app.api.v1 import api_router
-from app.core.db import Base, engine
+from app.core.db import get_engine
+from app.core.migrations import run_safe_migrations
 from app.models import db_models  # noqa: F401
 
 logger = get_logger(__name__)
@@ -42,8 +44,10 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def initialize_database() -> None:
         try:
-            Base.metadata.create_all(bind=engine)
-            logger.info("Database tables are ready")
+            os.makedirs(settings.DATA_DIR, exist_ok=True)
+            os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
+            run_safe_migrations(get_engine())
+            logger.info("Database tables and migrations are ready")
         except Exception as exc:
             logger.error(f"Database initialization failed: {exc}")
     
